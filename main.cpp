@@ -6,7 +6,6 @@
 #include <map>
 using namespace std;
 
-
 class Vessel
 {
 public:
@@ -36,16 +35,16 @@ public:
     };
 };
 
-struct schedule
+struct Schedule
 {
-    int position;
-    int mooringTime;
+    int position = 0;
+    int mooringTime = 0;
 };
 
 int berthLength= 0;
 vector<int> breakPoints;
 vector<Vessel*> vessels;
-map<Vessel, schedule> VesselsSchedule;
+map<Vessel*, Schedule> vesselsSchedule;
 
 void init()
 {
@@ -108,12 +107,47 @@ void getInput()
     */
 }
 
+void printOutput(){
+    cout << "% Vessel index, mooring time $u_i$, starting berth position occupied $v_i$" << endl;
+    for (auto v : vessels){
+        cout << v->m_index << "   ";
+        cout << vesselsSchedule[v].mooringTime << "   ";
+        cout << vesselsSchedule[v].position << endl;
+    }
+}
+
 int main ()
 {
     init();
     getInput();
+    vector<Vessel*> vesselsPriority(vessels);
+    sort(vesselsPriority.begin(),vesselsPriority.end(), [](Vessel* v1, Vessel* v2){ 
+        return((v1->m_arrivalTime + v1->m_processingTime)*v2->m_weight < (v2->m_arrivalTime + v2->m_processingTime)*v1->m_weight);});
+    
+    /*
+    //===============
+    // verify sort
+    cout << "vessels priority:" << endl;
+    for(auto v : vesselsPriority){
+        cout << v->m_index <<endl;
+    }
+    //==============
+    */
+
+    for (auto vessel : vesselsPriority){
+        Schedule schedule;
+        //Todo here ===>>>>>
+
+        // int aT = vessel->m_arrivalTime;
+        // int pT = vessel->m_processingTime;
+        // int s = vessel->m_size;
+
+        
 
 
+        vesselsSchedule.insert({vessel, schedule});
+    }
 
+    printOutput();
 }
 
