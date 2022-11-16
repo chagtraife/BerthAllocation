@@ -23,17 +23,13 @@ public:
     };
 };
 
-class Berth
+struct Berth
 {
-private:
-    int m_length;
-    vector<int> m_breakPoints;
-public:
-    Berth(int length, vector<int> breakPoints)
-    : m_length(length), m_breakPoints(breakPoints)
-    {
-    };
+    int startPoint;
+    int endPoint;
+    vector<Vessel> vessels;
 };
+
 
 struct Schedule
 {
@@ -43,6 +39,7 @@ struct Schedule
 
 int berthLength= 0;
 vector<int> breakPoints;
+vector<Berth> berthChilds;
 vector<Vessel*> vessels;
 map<Vessel*, Schedule> vesselsSchedule;
 
@@ -124,6 +121,17 @@ int main ()
     sort(vesselsPriority.begin(),vesselsPriority.end(), [](Vessel* v1, Vessel* v2){ 
         return((v1->m_arrivalTime + v1->m_processingTime)*v2->m_weight < (v2->m_arrivalTime + v2->m_processingTime)*v1->m_weight);});
     
+    
+    Berth berth;
+    for (int i = 0; i < breakPoints.size(); i++){
+        berth.startPoint = (i == 0) ? 0 : breakPoints[i-1];
+        berth.endPoint = breakPoints[i];
+        berthChilds.push_back(berth);
+    }
+    berth.startPoint = breakPoints.back();
+    berth.endPoint = berthLength;
+    berthChilds.push_back(berth);
+    sort(berthChilds.begin(), berthChilds.end(), [](Berth b1, Berth b2){ return((b1.endPoint - b1.startPoint) < (b2.endPoint - b2.startPoint));});
     /*
     //===============
     // verify sort
@@ -137,13 +145,18 @@ int main ()
     for (auto vessel : vesselsPriority){
         Schedule schedule;
         //Todo here ===>>>>>
+        schedule.mooringTime = vessel->m_arrivalTime;
+        vector<Schedule> B;
+        for (auto b : berthChilds){
+            if (b.vessels.empty()){
+                schedule.position = b.startPoint;
+                b.vessels.push_back(*vessel);
+                break;
+            } else{
 
-        // int aT = vessel->m_arrivalTime;
-        // int pT = vessel->m_processingTime;
-        // int s = vessel->m_size;
 
-        
-
+            }
+        }
 
         vesselsSchedule.insert({vessel, schedule});
     }
