@@ -27,7 +27,7 @@ struct Berth
 {
     int startPoint;
     int endPoint;
-    vector<Vessel> vessels;
+    vector<Vessel*> vessels;
 };
 
 
@@ -113,6 +113,33 @@ void printOutput(){
     }
 }
 
+bool checkScheduleValid(Vessel v, Schedule s){
+    int x1 = s.mooringTime;
+    int x2 = s.mooringTime + v.m_processingTime;
+    int y1 = s.position;
+    int y2 = s.position + v.m_size;
+    if (s.mooringTime < v.m_arrivalTime) return false;
+    for (auto vesselSchedule : vesselsSchedule){
+        Vessel vi = *vesselSchedule.first;
+        Schedule si = vesselSchedule.second;
+        int xi1 = si.mooringTime;
+        int xi2 = si.mooringTime + vi.m_processingTime;
+        int yi1 = si.position;
+        int yi2 = si.position + vi.m_size;
+        if (!(xi1 >= x2 || x1 >= xi2 || yi1 >= y2 || y1 >= yi2)){
+            return false;
+        }
+    }
+
+    for (auto b : berthChilds){
+        if ((y1 < b.endPoint) && (b.endPoint < y2)){
+            return false;
+        }
+    }
+
+    return true;
+}
+
 int main ()
 {
     init();
@@ -145,22 +172,90 @@ int main ()
     for (auto vessel : vesselsPriority){
         Schedule schedule;
         //Todo here ===>>>>>
-        schedule.mooringTime = vessel->m_arrivalTime;
-        vector<Schedule> B;
+        
+        vector<Schedule> S;
         for (auto b : berthChilds){
             if (b.vessels.empty()){
-                schedule.position = b.startPoint;
-                b.vessels.push_back(*vessel);
-                break;
+                Schedule s1;
+                s1.position = b.startPoint;
+                s1.mooringTime = vessel->m_arrivalTime;
+                if (checkScheduleValid(*vessel, s1)){
+                    S.push_back(s1);
+                    break;
+                }
             } else{
+                for (auto v_last : b.vessels){
+                    if (vesselsSchedule[v_last].mooringTime + v_last->m_processingTime < vessel->m_arrivalTime) continue;
+                    Schedule s;
+                    s.position = b.startPoint;
+                    s.mooringTime = vesselsSchedule[v_last].mooringTime + v_last->m_processingTime;
+                    if (checkScheduleValid(*vessel, s)){
+                        S.push_back(s);
+                    }
+                }
 
+                Schedule s1;
+                s1.position = b.startPoint;
+                s1.mooringTime = vessel->m_arrivalTime;
+                if (checkScheduleValid(*vessel, s1)){
+                    S.push_back(s1);
+                }
 
+                for (auto v_p : b.vessels){       
+                    if (vesselsSchedule[v_p].mooringTime + v_p->m_processingTime < vessel->m_arrivalTime) continue;
+                    for (auto v_last : b.vessels){
+                        if (vesselsSchedule[v_last].mooringTime + v_last->m_processingTime < vessel->m_arrivalTime) continue;
+                        Schedule s;
+                        s.position = vesselsSchedule[v_p].position + v_p->m_size;
+                        s.mooringTime = vesselsSchedule[v_last].mooringTime + v_last->m_processingTime;
+                        if (checkScheduleValid(*vessel, s)){
+                            S.push_back(s);
+                        }
+                    }
+                    Schedule s2;
+                    s2.position = vesselsSchedule[v_p].position + v_p->m_size;
+                    s2.mooringTime = vessel->m_arrivalTime;
+                    if (checkScheduleValid(*vessel, s2)){
+                        S.push_back(s2);
+                    }
+
+                }
             }
         }
 
+        // get best schedule from S
+        vector<Schedule> s_potential;
+        s_potential.push_back(S.front());
+        int late_time_min = S.front().mooringTime - vessel->m_arrivalTime;
+        for (auto s : S)
+        {
+            int lateTime = s.mooringTime - vessel->m_arrivalTime;
+            if (lateTime < late_time_min) {
+                s_potential.clear();
+                late_time_min = lateTime;
+                s_potential.push_back(s);
+            } else if(lateTime == late_time_min){
+                s_potential.push_back(s);
+            }
+        }
+        schedule = s_potential.front();
+        int position_min = s_potential.front().position;
+        for (auto s : s_potential)
+        {
+            if (s.position < position_min) {
+                position_min = s.position;
+                schedule = s;
+            }
+        }
+
+        for (auto &b : berthChilds){
+            if ((b.startPoint <= schedule.position) && (schedule.position < b.endPoint)) {
+                b.vessels.push_back(vessel);
+                break;
+            }
+        }
         vesselsSchedule.insert({vessel, schedule});
     }
 
     printOutput();
 }
-
