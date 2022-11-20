@@ -4,6 +4,10 @@
 #include <algorithm>
 #include <sstream>
 #include <map>
+
+#include <chrono>
+using namespace std::chrono;
+
 using namespace std;
 
 class Vessel
@@ -140,13 +144,37 @@ bool checkScheduleValid(Vessel v, Schedule s){
     return true;
 }
 
+int getBerthId(int position)
+{   
+    for (int i = 0; i < berthChilds.size(); i++)
+    {
+        auto b = berthChilds[i];
+        if ((b.startPoint <= position) && (position < b.endPoint)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int calTotalWaitTime()
+{
+    int totalWaitTime = 0;
+    for (auto v : vessels){
+        totalWaitTime += (vesselsSchedule[v].mooringTime - v->m_arrivalTime) * v->m_weight ;
+    }
+    return totalWaitTime;
+}
+
 int main ()
 {
     init();
     getInput();
+    auto start = high_resolution_clock::now();
     vector<Vessel*> vesselsPriority(vessels);
     sort(vesselsPriority.begin(),vesselsPriority.end(), [](Vessel* v1, Vessel* v2){ 
-        return((v1->m_arrivalTime + v1->m_processingTime)*v2->m_weight < (v2->m_arrivalTime + v2->m_processingTime)*v1->m_weight);});
+        return((v1->m_arrivalTime + v1->m_processingTime)*v2->m_weight < (v2->m_arrivalTime + v2->m_processingTime)*v1->m_weight);
+        // return(v1->m_arrivalTime < v2->m_arrivalTime);
+        });
     
     
     Berth berth;
@@ -239,12 +267,19 @@ int main ()
             }
         }
         schedule = s_potential.front();
+        int berth_min_id = getBerthId(s_potential.front().position);
         int position_min = s_potential.front().position;
         for (auto s : s_potential)
         {
-            if (s.position < position_min) {
+            if (berth_min_id > getBerthId(s.position)){
+                berth_min_id = getBerthId(s.position);
                 position_min = s.position;
                 schedule = s;
+            } else if (berth_min_id == getBerthId(s.position)) {
+                if (s.position < position_min) {
+                    position_min = s.position;
+                    schedule = s;
+                }
             }
         }
 
@@ -256,6 +291,9 @@ int main ()
         }
         vesselsSchedule.insert({vessel, schedule});
     }
-
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<microseconds>(stop - start);
     printOutput();
+    cout << "processing time: " << duration.count() << " second" << endl;
+    cout << "Total wait time: " << calTotalWaitTime();
 }
